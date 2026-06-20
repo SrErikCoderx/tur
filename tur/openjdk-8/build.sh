@@ -4,7 +4,7 @@ TERMUX_PKG_LICENSE="GPL-2.0"
 TERMUX_PKG_MAINTAINER="@SrErikCoderx"
 TERMUX_PKG_VERSION="8.0.502"
 TERMUX_PKG_REVISION=1
-TERMUX_PKG_SRCURL=https://github.com/openjdk/jdk8u/archive/refs/tags/jdk8u502-b05.tar.gz
+TERMUX_PKG_SRCURL=https://github.com/openjdk/jdk8u/archive/refs/heads/master.tar.gz
 TERMUX_PKG_SHA256=SKIP_CHECKSUM
 TERMUX_PKG_DEPENDS="libandroid-shmem, libandroid-spawn, libiconv, libjpeg-turbo, zlib, littlecms, alsa-plugins, freetype, libpng, fontconfig"
 TERMUX_PKG_BUILD_DEPENDS="cups, fontconfig, libxrandr, libxt, xorgproto, alsa-lib"
@@ -80,15 +80,42 @@ termux_step_pre_configure() {
 	ar cru "$TERMUX_PKG_CACHEDIR/dummy_libs/libpthread.a"
 	ar cru "$TERMUX_PKG_CACHEDIR/dummy_libs/libthread_db.a"
 
+	# For ARM (32-bit), use aarch32-port-jdk8u which has the arm-specific files
+	if [ "$TERMUX_ARCH" = "arm" ]; then
+		echo "Cloning aarch32-port-jdk8u for ARM build..."
+		local _aarch32_clone="$TERMUX_PKG_CACHEDIR/aarch32-port-jdk8u-master"
+		if [ ! -d "$_aarch32_clone" ]; then
+			git clone --depth 1 https://github.com/openjdk/aarch32-port-jdk8u "$_aarch32_clone"
+		fi
+		rsync -a --delete "$_aarch32_clone/" "$TERMUX_PKG_SRCDIR/"
+	fi
+
 	local _patch_dir="$TERMUX_PKG_BUILDER_DIR/patches"
-	if [ -d "$_patch_dir" ]; then
-		for patch in "$_patch_dir"/*.diff; do
-			if [ -f "$patch" ]; then
-				echo "Applying patch: $(basename "$patch")"
-				git apply --reject --whitespace=fix "$patch" || \
-					termux_error_exit "Failed to apply patch: $(basename "$patch")"
-			fi
-		done
+
+	# Universal patches (applied to all arches)
+	for patch in jdk8u_android.diff ipv6_support.diff jdk8u_android_distags.diff; do
+		if [ -f "$_patch_dir/$patch" ]; then
+			echo "Applying patch: $patch"
+			git apply --reject --whitespace=fix "$_patch_dir/$patch" || \
+				echo "Warning: git apply had rejects for: $patch"
+		fi
+	done
+
+	# Architecture-specific patches
+	if [ "$TERMUX_ARCH" = "arm" ]; then
+		echo "Applying aarch32-specific patch"
+		git apply --reject --whitespace=fix "$_patch_dir/jdk8u_android_aarch32.diff" || \
+			echo "Warning: git apply had rejects for: jdk8u_android_aarch32.diff"
+	else
+		echo "Applying main (non-aarch32) patch"
+		git apply --reject --whitespace=fix "$_patch_dir/jdk8u_android_main.diff" || \
+			echo "Warning: git apply had rejects for: jdk8u_android_main.diff"
+	fi
+
+	# x86 page trap fix
+	if [ "$TERMUX_ARCH" = "i686" ]; then
+		git apply --reject --whitespace=fix "$_patch_dir/jdk8u_android_page_trap_fix.diff" || \
+			echo "Warning: git apply had rejects for: jdk8u_android_page_trap_fix.diff"
 	fi
 
 	if [ "$TERMUX_ARCH" = "aarch64" ]; then
