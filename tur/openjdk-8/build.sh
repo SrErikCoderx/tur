@@ -32,12 +32,12 @@ _download_ndk_r10e() {
 _setup_standalone_toolchain_ndk_r10e() {
 	_download_ndk_r10e
 
-	local _ndk_arch
+	local _ndk_arch _toolchain_subdir
 	case "$TERMUX_ARCH" in
-		aarch64) _ndk_arch="arm64" ;;
-		arm)     _ndk_arch="arm" ;;
-		x86_64)  _ndk_arch="x86_64" ;;
-		i686)    _ndk_arch="x86" ;;
+		aarch64) _ndk_arch="arm64"; _toolchain_subdir="aarch64-linux-android" ;;
+		arm)     _ndk_arch="arm";   _toolchain_subdir="arm-linux-androideabi" ;;
+		x86_64)  _ndk_arch="x86_64"; _toolchain_subdir="x86_64-linux-android" ;;
+		i686)    _ndk_arch="x86";    _toolchain_subdir="i686-linux-android" ;;
 	esac
 
 	export NDK_R10E_TOOLCHAIN="$TERMUX_PKG_CACHEDIR/ndk-r10e-toolchain-$TERMUX_ARCH"
@@ -46,6 +46,12 @@ _setup_standalone_toolchain_ndk_r10e() {
 			--arch="$_ndk_arch" \
 			--platform=android-21 \
 			--install-dir="$NDK_R10E_TOOLCHAIN"
+		# Create devkit.info for OpenJDK's --with-devkit
+		cat > "$NDK_R10E_TOOLCHAIN/devkit.info" <<-EOF
+		DEVKIT_NAME="Android ${_ndk_arch}"
+		DEVKIT_TOOLCHAIN_PATH="\$DEVKIT_ROOT/${_toolchain_subdir}/bin"
+		DEVKIT_SYSROOT="\$DEVKIT_ROOT/sysroot"
+		EOF
 	fi
 }
 
@@ -70,15 +76,6 @@ termux_step_pre_configure() {
 		i686)    target_phys="i686-linux-android" ;;
 	esac
 	export _JDK8_TARGET_PHYS="$target_phys"
-
-	export _JDK8_CC="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-gcc"
-	export _JDK8_CXX="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-g++"
-	export _JDK8_AR="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ar"
-	export _JDK8_AS="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-as"
-	export _JDK8_LD="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ld"
-	export _JDK8_RANLIB="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ranlib"
-	export _JDK8_STRIP="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-strip"
-	export _JDK8_OBJCOPY="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-objcopy"
 
 	local _android_include="$NDK_R10E_TOOLCHAIN/sysroot/usr/include"
 	ln -s -f /usr/include/X11 "$_android_include/"
@@ -166,9 +163,12 @@ termux_step_configure() {
 		-Wl,-rpath=${TERMUX_PREFIX}/lib -Wl,--enable-new-dtags \
 		-L$TERMUX_PKG_CACHEDIR/dummy_libs"
 
+	export PATH="$NDK_R10E_TOOLCHAIN/${_JDK8_TARGET_PHYS}/bin:$PATH"
+
 	bash ./configure \
 		--openjdk-target="$_JDK8_TARGET_PHYS" \
 		--with-boot-jdk="$TERMUX_PKG_HOSTBUILD_DIR" \
+		--with-devkit="$NDK_R10E_TOOLCHAIN" \
 		--with-extra-cflags="$jdk_extra_cflags" \
 		--with-extra-cxxflags="$jdk_extra_cflags" \
 		--with-extra-ldflags="$jdk_ldflags" \
@@ -183,14 +183,6 @@ termux_step_configure() {
 		--with-vendor-name="Termux" \
 		--x-includes="$TERMUX_PREFIX/include" \
 		--x-libraries="$TERMUX_PREFIX/lib" \
-		AR="$_JDK8_AR" \
-		AS="$_JDK8_AS" \
-		CC="$_JDK8_CC" \
-		CXX="$_JDK8_CXX" \
-		LD="$_JDK8_LD" \
-		OBJCOPY="$_JDK8_OBJCOPY" \
-		RANLIB="$_JDK8_RANLIB" \
-		STRIP="$_JDK8_STRIP" \
 	|| {
 		echo "CONFIGURE ERROR, dumping config.log:"
 		cat config.log
