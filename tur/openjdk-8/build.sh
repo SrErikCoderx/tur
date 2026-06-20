@@ -13,6 +13,7 @@ TERMUX_PKG_SUGGESTS="cups"
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_HAS_DEBUG=false
 TERMUX_PKG_NO_STATICSPLIT=true
+TERMUX_PKG_HOSTBUILD=true
 
 _NDK_R10E_URL="https://dl.google.com/android/repository/android-ndk-r10e-linux-x86_64.zip"
 _NDK_R10E_SHA256="ee5f405f3b57c4f5c3b3b8b5d495ae12b660e03d2112e4ed5c728d349f1e520c"
@@ -46,6 +47,14 @@ _setup_standalone_toolchain_ndk_r10e() {
 			--platform=android-21 \
 			--install-dir="$NDK_R10E_TOOLCHAIN"
 	fi
+}
+
+termux_step_host_build() {
+	JDK_BINURL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u492-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u492b09.tar.gz"
+	JDK_BINARCHIVE="${TERMUX_PKG_CACHEDIR}/openjdk-8u492-b09-linux-x64.tar.gz"
+	JDK_BINSHA256="da257f161d7f8c6ca5b0e5d9e4090f65ac28c5e398072e68b8ae87988b1d1a2e"
+	termux_download "$JDK_BINURL" "$JDK_BINARCHIVE" "$JDK_BINSHA256"
+	tar -xf "$JDK_BINARCHIVE" --strip-components=1 -C "$TERMUX_PKG_HOSTBUILD_DIR"
 }
 
 termux_step_pre_configure() {
@@ -159,6 +168,7 @@ termux_step_configure() {
 
 	bash ./configure \
 		--openjdk-target="$_JDK8_TARGET_PHYS" \
+		--with-boot-jdk="$TERMUX_PKG_HOSTBUILD_DIR" \
 		--with-extra-cflags="$jdk_extra_cflags" \
 		--with-extra-cxxflags="$jdk_extra_cflags" \
 		--with-extra-ldflags="$jdk_ldflags" \
