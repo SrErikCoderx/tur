@@ -32,12 +32,12 @@ _download_ndk_r10e() {
 _setup_standalone_toolchain_ndk_r10e() {
 	_download_ndk_r10e
 
-	local _ndk_arch _toolchain_subdir
+	local _ndk_arch
 	case "$TERMUX_ARCH" in
-		aarch64) _ndk_arch="arm64"; _toolchain_subdir="aarch64-linux-android" ;;
-		arm)     _ndk_arch="arm";   _toolchain_subdir="arm-linux-androideabi" ;;
-		x86_64)  _ndk_arch="x86_64"; _toolchain_subdir="x86_64-linux-android" ;;
-		i686)    _ndk_arch="x86";    _toolchain_subdir="i686-linux-android" ;;
+		aarch64) _ndk_arch="arm64" ;;
+		arm)     _ndk_arch="arm" ;;
+		x86_64)  _ndk_arch="x86_64" ;;
+		i686)    _ndk_arch="x86" ;;
 	esac
 
 	export NDK_R10E_TOOLCHAIN="$TERMUX_PKG_CACHEDIR/ndk-r10e-toolchain-$TERMUX_ARCH"
@@ -49,7 +49,7 @@ _setup_standalone_toolchain_ndk_r10e() {
 		# Create devkit.info for OpenJDK's --with-devkit
 		cat > "$NDK_R10E_TOOLCHAIN/devkit.info" <<-EOF
 		DEVKIT_NAME="Android ${_ndk_arch}"
-		DEVKIT_TOOLCHAIN_PATH="\$DEVKIT_ROOT/${_toolchain_subdir}/bin"
+		DEVKIT_TOOLCHAIN_PATH="\$DEVKIT_ROOT/bin"
 		DEVKIT_SYSROOT="\$DEVKIT_ROOT/sysroot"
 		EOF
 	fi
@@ -162,8 +162,6 @@ termux_step_configure() {
 		-Wl,-rpath=$TERMUX_PREFIX/lib/jvm/java-8-openjdk/lib \
 		-Wl,-rpath=${TERMUX_PREFIX}/lib -Wl,--enable-new-dtags \
 		-L$TERMUX_PKG_CACHEDIR/dummy_libs"
-
-	export PATH="$NDK_R10E_TOOLCHAIN/${_JDK8_TARGET_PHYS}/bin:$PATH"
 
 	bash ./configure \
 		--openjdk-target="$_JDK8_TARGET_PHYS" \
