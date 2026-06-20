@@ -15,7 +15,7 @@ TERMUX_PKG_HAS_DEBUG=false
 TERMUX_PKG_NO_STATICSPLIT=true
 
 _NDK_R10E_URL="https://dl.google.com/android/repository/android-ndk-r10e-linux-x86_64.zip"
-_NDK_R10E_SHA256="be8ba1d92b0d8b27741a1f7b3f3434fa54bbb50e8bc18d409c52ba62b5fa9be6"
+_NDK_R10E_SHA256="ee5f405f3b57c4f5c3b3b8b5d495ae12b660e03d2112e4ed5c728d349f1e520c"
 
 _download_ndk_r10e() {
 	if [ ! -f "$TERMUX_COMMON_CACHEDIR/older-ndk/.placeholder-android-ndk-r10e" ]; then
