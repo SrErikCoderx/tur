@@ -167,7 +167,12 @@ termux_step_configure() {
 	echo "=== Testing NDK r10e GCC ==="
 	ls -la "$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" 2>&1 || true
 	echo 'int main(){return 0;}' > /tmp/test_gcc_$$.c
-	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1 || true
+	set +e
+	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1
+	echo "GCC exit code: $?"
+	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1 | tail -5
+	echo "GCC piped exit: ${PIPESTATUS[0]}"
+	set -e
 	rm -f /tmp/test_gcc_$$ /tmp/test_gcc_$$.c
 	echo "=== End GCC test ==="
 
