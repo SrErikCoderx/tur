@@ -46,13 +46,9 @@ _setup_standalone_toolchain_ndk_r10e() {
 			--arch="$_ndk_arch" \
 			--platform=android-21 \
 			--install-dir="$NDK_R10E_TOOLCHAIN"
-		# Create devkit.info for OpenJDK's --with-devkit
-		cat > "$NDK_R10E_TOOLCHAIN/devkit.info" <<-EOF
-		DEVKIT_NAME="Android ${_ndk_arch}"
-		DEVKIT_TOOLCHAIN_PATH="\$DEVKIT_ROOT/bin"
-		DEVKIT_SYSROOT="\$DEVKIT_ROOT/sysroot"
-		EOF
 	fi
+	# Prepend NDK toolchain to PATH so our GCC is found before termux's Clang
+	export PATH="$NDK_R10E_TOOLCHAIN/bin:$PATH"
 }
 
 termux_step_host_build() {
@@ -76,6 +72,15 @@ termux_step_pre_configure() {
 		i686)    target_phys="i686-linux-android" ;;
 	esac
 	export _JDK8_TARGET_PHYS="$target_phys"
+
+	export _JDK8_CC="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-gcc"
+	export _JDK8_CXX="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-g++"
+	export _JDK8_AR="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ar"
+	export _JDK8_AS="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-as"
+	export _JDK8_LD="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ld"
+	export _JDK8_RANLIB="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-ranlib"
+	export _JDK8_STRIP="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-strip"
+	export _JDK8_OBJCOPY="$NDK_R10E_TOOLCHAIN/bin/${target_phys}-objcopy"
 
 	local _android_include="$NDK_R10E_TOOLCHAIN/sysroot/usr/include"
 	ln -s -f /usr/include/X11 "$_android_include/"
@@ -163,23 +168,9 @@ termux_step_configure() {
 		-Wl,-rpath=${TERMUX_PREFIX}/lib -Wl,--enable-new-dtags \
 		-L$TERMUX_PKG_CACHEDIR/dummy_libs"
 
-	# Debug: test GCC cross-compiler
-	echo "=== Testing NDK r10e GCC ==="
-	ls -la "$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" 2>&1 || true
-	echo 'int main(){return 0;}' > /tmp/test_gcc_$$.c
-	set +e
-	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1
-	echo "GCC exit code: $?"
-	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1 | tail -5
-	echo "GCC piped exit: ${PIPESTATUS[0]}"
-	set -e
-	rm -f /tmp/test_gcc_$$ /tmp/test_gcc_$$.c
-	echo "=== End GCC test ==="
-
 	bash ./configure \
 		--openjdk-target="$_JDK8_TARGET_PHYS" \
 		--with-boot-jdk="$TERMUX_PKG_HOSTBUILD_DIR" \
-		--with-devkit="$NDK_R10E_TOOLCHAIN" \
 		--with-extra-cflags="$jdk_extra_cflags" \
 		--with-extra-cxxflags="$jdk_extra_cflags" \
 		--with-extra-ldflags="$jdk_ldflags" \
@@ -194,6 +185,14 @@ termux_step_configure() {
 		--with-vendor-name="Termux" \
 		--x-includes="$TERMUX_PREFIX/include" \
 		--x-libraries="$TERMUX_PREFIX/lib" \
+		AR="$_JDK8_AR" \
+		AS="$_JDK8_AS" \
+		CC="$_JDK8_CC" \
+		CXX="$_JDK8_CXX" \
+		LD="$_JDK8_LD" \
+		OBJCOPY="$_JDK8_OBJCOPY" \
+		RANLIB="$_JDK8_RANLIB" \
+		STRIP="$_JDK8_STRIP" \
 	|| {
 		echo "CONFIGURE ERROR, dumping config.log:"
 		cat config.log
