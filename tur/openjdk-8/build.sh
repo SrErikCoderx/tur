@@ -163,6 +163,14 @@ termux_step_configure() {
 		-Wl,-rpath=${TERMUX_PREFIX}/lib -Wl,--enable-new-dtags \
 		-L$TERMUX_PKG_CACHEDIR/dummy_libs"
 
+	# Debug: test GCC cross-compiler
+	echo "=== Testing NDK r10e GCC ==="
+	ls -la "$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" 2>&1 || true
+	echo 'int main(){return 0;}' > /tmp/test_gcc_$$.c
+	"$NDK_R10E_TOOLCHAIN/bin/${_JDK8_TARGET_PHYS}-gcc" -v -o /tmp/test_gcc_$$ /tmp/test_gcc_$$.c 2>&1 || true
+	rm -f /tmp/test_gcc_$$ /tmp/test_gcc_$$.c
+	echo "=== End GCC test ==="
+
 	bash ./configure \
 		--openjdk-target="$_JDK8_TARGET_PHYS" \
 		--with-boot-jdk="$TERMUX_PKG_HOSTBUILD_DIR" \
