@@ -107,7 +107,7 @@ termux_step_post_make_install() {
 
 	local failure=false
 	for binary in $(find "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/bin" -executable -type f -exec basename {} \;); do
-		grep -q "lib/jvm/java-8-openjdk/bin/${binary}$" \
+		grep -q "lib/jvm/java-8-openjdk/bin/${binary}[[:space:]]" \
 			"$TERMUX_PKG_BUILDER_DIR"/openjdk-8.alternatives || {
 			echo "ERROR: Missing entry for binary: $binary in openjdk-8.alternatives"
 			failure=true
