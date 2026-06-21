@@ -110,6 +110,7 @@ termux_step_make_install() {
 
 	local rpath="${jdk_home}/lib/${jdk_lib_arch}:${jdk_home}/lib/${jdk_lib_arch}/jli"
 	rpath+=":${jdk_home}/jre/lib/${jdk_lib_arch}:${jdk_home}/jre/lib/${jdk_lib_arch}/jli"
+	rpath+=":${jdk_home}/jre/lib/${jdk_lib_arch}/server:${jdk_home}/jre/lib/${jdk_lib_arch}/client"
 	rpath+=":${jdk_home}/lib:${jdk_home}/jre/lib"
 	rpath+=":${TERMUX_PREFIX}/lib"
 
