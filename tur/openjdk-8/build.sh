@@ -114,8 +114,16 @@ termux_step_make_install() {
 	rpath+=":${jdk_home}/lib:${jdk_home}/jre/lib"
 	rpath+=":${TERMUX_PREFIX}/lib"
 
-	patchelf --set-rpath "$rpath" "$jdk_home"/bin/* 2>/dev/null || true
-	find "$jdk_home" -name "*.so" -exec patchelf --set-rpath "$rpath" {} \; 2>/dev/null || true
+# Procesar cada binario individualmente: "bin/*" expandido en una sola
+	# invocación de patchelf falla silenciosamente en binarios sin RPATH
+	# previo (jjs, rmic, orbd, etc), y el "|| true" lo ocultaba.
+	find "$jdk_home/bin" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' bin; do
+		patchelf --set-rpath "$rpath" "$bin" || echo "WARN: patchelf failed on $bin" >&2
+	done
+
+	find "$jdk_home" -name "*.so" -print0 | while IFS= read -r -d '' lib; do
+		patchelf --set-rpath "$rpath" "$lib" || echo "WARN: patchelf failed on $lib" >&2
+	done
 
 	for dir in "$jdk_home/lib/$jdk_lib_arch" \
 		"$jdk_home/jre/lib/$jdk_lib_arch"; do
