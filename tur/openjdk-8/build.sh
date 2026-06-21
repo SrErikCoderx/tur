@@ -43,6 +43,11 @@ termux_step_pre_configure() {
 
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 
+	# cmake needed by debpack.sh (termux-elf-cleaner) and buildlibs.sh
+	if ! command -v cmake &>/dev/null; then
+		sudo apt-get install -y cmake 2>/dev/null || true
+	fi
+
 	local _arch
 	case "$TERMUX_ARCH" in
 		aarch64) _arch="aarch64" ;;
