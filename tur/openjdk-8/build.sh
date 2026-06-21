@@ -21,14 +21,6 @@ termux_step_host_build() {
 	local sha="da257f161d7f8c6ca5b0e5d9e4090f65ac28c5e398072e68b8ae87988b1d1a2e"
 	termux_download "$url" "$arc" "$sha"
 	tar -xf "$arc" --strip-components=1 -C "$TERMUX_PKG_HOSTBUILD_DIR"
-
-	# Build termux-elf-cleaner (used by debpack.sh) — host build has cmake
-	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
-	git clone --depth 1 https://github.com/termux/termux-elf-cleaner \
-		"$TERMUX_PKG_SRCDIR/termux-elf-cleaner/src"
-	cd "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
-	cmake ../src
-	make -j4
 }
 
 termux_step_pre_configure() {
@@ -50,6 +42,10 @@ termux_step_pre_configure() {
 	export PATH="$_newpath"
 
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
+
+	# Pre-build termux-elf-cleaner binary for debpack.sh (TUR provides it)
+	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
+	cp "$TERMUX_ELF_CLEANER" "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build/termux-elf-cleaner"
 
 	local _arch
 	case "$TERMUX_ARCH" in
