@@ -1,0 +1,67 @@
+name: Debug OpenJDK-8
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Target architecture'
+        required: true
+        default: 'aarch64'
+        type: choice
+        options:
+          - aarch64
+          - arm
+          - i686
+          - x86_64
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1000
+
+      - name: Merge repos
+        run: ./setup-environment.sh
+
+      - name: Start Docker container
+        run: ./scripts/run-docker.sh true
+
+      - name: Print debug info
+        run: |
+          echo "============================================"
+          echo "  OPENJDK-8 DEBUG SESSION"
+          echo "============================================"
+          echo ""
+          echo "  Container name: termux-package-builder"
+          echo "  Target arch:    ${{ inputs.arch }}"
+          echo ""
+          echo "  Useful commands once connected via SSH:"
+          echo ""
+          echo "  # Enter the Docker container:"
+          echo "  docker exec -it termux-package-builder bash"
+          echo ""
+          echo "  # Run configure manually inside container:"
+          echo "  cd /home/builder/.termux-build/openjdk-8/src"
+          echo "  ./configure ..."
+          echo ""
+          echo "  # Check config.log:"
+          echo "  less config.log"
+          echo ""
+          echo "  # Test NDK r10e GCC:"
+          echo "  cd /home/builder/.termux-build/_cache/older-ndk"
+          echo "  .../bin/aarch64-linux-android-gcc -v"
+          echo "============================================"
+
+      - name: SSH debug session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+      - name: Build openjdk-8
+        run: |
+          ./scripts/run-docker.sh -d ./build-package.sh -I -C -a ${{ inputs.arch }} openjdk-8
