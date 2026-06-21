@@ -43,10 +43,8 @@ termux_step_pre_configure() {
 
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 
-	# cmake needed by debpack.sh to compile termux-elf-cleaner
-	if ! command -v cmake &>/dev/null; then
-		apt-get install -y cmake
-	fi
+	# Patch debpack.sh to use system termux-elf-cleaner instead of building with cmake
+	perl -0777 -pi -e 's|if \[ ! -f termux-elf-cleaner/build/termux-elf-cleaner \]; then\n(.*?\n)fi\n|if [ ! -f termux-elf-cleaner/build/termux-elf-cleaner ]; then\n  echo "Using system termux-elf-cleaner..."\n  mkdir -p termux-elf-cleaner/build\n  cp "$(command -v termux-elf-cleaner)" termux-elf-cleaner/build/\nfi\n|s' "$TERMUX_PKG_SRCDIR/debpack.sh"
 
 	local _arch
 	case "$TERMUX_ARCH" in
