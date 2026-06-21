@@ -43,6 +43,11 @@ termux_step_pre_configure() {
 
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 
+	# cmake needed by debpack.sh to compile termux-elf-cleaner
+	if ! command -v cmake &>/dev/null; then
+		apt-get install -y cmake
+	fi
+
 	local _arch
 	case "$TERMUX_ARCH" in
 		aarch64) _arch="aarch64" ;;
