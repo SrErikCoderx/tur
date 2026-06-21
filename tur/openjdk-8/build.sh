@@ -16,6 +16,15 @@ TERMUX_PKG_NO_STATICSPLIT=true
 TERMUX_PKG_HOSTBUILD=true
 TERMUX_PKG_UNDEF_SYMBOLS_FILES="all"
 
+_ensure_patchelf() {
+	[ -x "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin/patchelf" ] && return 0
+	local _patchelf_url="https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
+	local _patchelf_arc="$TERMUX_PKG_CACHEDIR/patchelf.tar.gz"
+	curl -fsSL "$_patchelf_url" -o "$_patchelf_arc"
+	mkdir -p "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin"
+	tar -xzf "$_patchelf_arc" -C "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0"
+}
+
 termux_step_host_build() {
 	local url="https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u492-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u492b09.tar.gz"
 	local arc="$TERMUX_PKG_CACHEDIR/jdk8-boot-x64.tar.gz"
@@ -47,6 +56,10 @@ termux_step_pre_configure() {
 
 	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
 	cp "$TERMUX_ELF_CLEANER" "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build/termux-elf-cleaner"
+
+	# patchelf is needed by debpack.sh to set RUNPATH on JDK shared libs
+	_ensure_patchelf
+	export PATH="$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin:$PATH"
 
 	local _arch
 	case "$TERMUX_ARCH" in
@@ -87,11 +100,24 @@ termux_step_make_install() {
 	cp -r "$TERMUX_PKG_SRCDIR/jdkout/$_jdkout_dir/"* \
 		"$TERMUX_PREFIX/lib/jvm/java-8-openjdk/"
 
-	local jdk_lib_arch
-	jdk_lib_arch=$(basename "$(find "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/lib" -maxdepth 1 -type d ! -name lib | head -1)")
+	local jdk_home="$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
 
-	for dir in "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/lib/$jdk_lib_arch" \
-		"$TERMUX_PREFIX/lib/jvm/java-8-openjdk/jre/lib/$jdk_lib_arch"; do
+	_ensure_patchelf
+	export PATH="$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin:$PATH"
+
+	local jdk_lib_arch
+	jdk_lib_arch=$(basename "$(find "$jdk_home/lib" -maxdepth 1 -type d ! -name lib | head -1)")
+
+	local rpath="${jdk_home}/lib/${jdk_lib_arch}:${jdk_home}/lib/${jdk_lib_arch}/jli"
+	rpath+=":${jdk_home}/jre/lib/${jdk_lib_arch}:${jdk_home}/jre/lib/${jdk_lib_arch}/jli"
+	rpath+=":${jdk_home}/lib:${jdk_home}/jre/lib"
+	rpath+=":${TERMUX_PREFIX}/lib"
+
+	patchelf --set-rpath "$rpath" "$jdk_home"/bin/* 2>/dev/null || true
+	find "$jdk_home" -name "*.so" -exec patchelf --set-rpath "$rpath" {} \; 2>/dev/null || true
+
+	for dir in "$jdk_home/lib/$jdk_lib_arch" \
+		"$jdk_home/jre/lib/$jdk_lib_arch"; do
 		rm -f "$dir/librt.so"
 		case "$TERMUX_ARCH" in
 			aarch64|x86_64) ln -sf /system/lib64/libc.so "$dir/librt.so" ;;
@@ -99,9 +125,8 @@ termux_step_make_install() {
 		esac
 	done
 
-	mkdir -p "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/etc/profile.d"
-	echo "export JAVA_HOME=$TERMUX_PREFIX/lib/jvm/java-8-openjdk/" > \
-		"$TERMUX_PREFIX/lib/jvm/java-8-openjdk/etc/profile.d/java.sh"
+	mkdir -p "$jdk_home/etc/profile.d"
+	echo "export JAVA_HOME=$jdk_home/" > "$jdk_home/etc/profile.d/java.sh"
 }
 
 termux_step_post_make_install() {
