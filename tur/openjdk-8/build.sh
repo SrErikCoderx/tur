@@ -24,14 +24,12 @@ termux_step_host_build() {
 }
 
 termux_step_pre_configure() {
+	local _saved_PATH="$PATH"
 	local _saved_STRIP="${STRIP:-}"
 
 	unset CC CXX CPP LD AR AS RANLIB STRIP OBJCOPY CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 	unset TERMUX_STANDALONE_TOOLCHAIN TERMUX_HOST_PLATFORM CGO_CFLAGS CGO_LDFLAGS
 
-	# Remove termux toolchain paths from PATH so host compiler detection
-	# finds the system's native gcc/g++, not the cross-compiler wrappers.
-	# ADLC (host tool) must be built for Linux x86_64, not Android.
 	local _newpath=""
 	local _p
 	IFS=: read -ra _p <<< "$PATH"
@@ -45,7 +43,6 @@ termux_step_pre_configure() {
 
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 
-	# Pre-build termux-elf-cleaner binary for debpack.sh (TUR provides it)
 	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
 	cp "$TERMUX_ELF_CLEANER" "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build/termux-elf-cleaner"
 
@@ -61,6 +58,7 @@ termux_step_pre_configure() {
 	cd "$TERMUX_PKG_SRCDIR"
 	bash "ci_build_arch_${_arch}.sh"
 
+	export PATH="$_saved_PATH"
 	export STRIP="$_saved_STRIP"
 }
 
