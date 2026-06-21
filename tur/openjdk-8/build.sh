@@ -26,6 +26,7 @@ termux_step_host_build() {
 termux_step_pre_configure() {
 	local _saved_PATH="$PATH"
 	local _saved_STRIP="${STRIP:-}"
+	local _saved_TERMUX_HOST_PLATFORM="${TERMUX_HOST_PLATFORM:-}"
 
 	unset CC CXX CPP LD AR AS RANLIB STRIP OBJCOPY CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 	unset TERMUX_STANDALONE_TOOLCHAIN TERMUX_HOST_PLATFORM CGO_CFLAGS CGO_LDFLAGS
@@ -60,6 +61,7 @@ termux_step_pre_configure() {
 
 	export PATH="$_saved_PATH"
 	export STRIP="$_saved_STRIP"
+	export TERMUX_HOST_PLATFORM="$_saved_TERMUX_HOST_PLATFORM"
 }
 
 termux_step_configure() {
