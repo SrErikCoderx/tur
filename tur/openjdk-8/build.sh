@@ -24,6 +24,13 @@ termux_step_host_build() {
 }
 
 termux_step_pre_configure() {
+	# Save TUR's cross-toolchain variables (needed by termux_step_massage later)
+	local _saved_CC="$CC" _saved_CXX="$CXX" _saved_CPP="$CPP"
+	local _saved_LD="$LD" _saved_AR="$AR" _saved_AS="$AS"
+	local _saved_RANLIB="$RANLIB" _saved_STRIP="$STRIP" _saved_OBJCOPY="$OBJCOPY"
+	local _saved_TERMUX_STANDALONE_TOOLCHAIN="$TERMUX_STANDALONE_TOOLCHAIN"
+	local _saved_TERMUX_HOST_PLATFORM="$TERMUX_HOST_PLATFORM"
+
 	unset CC CXX CPP LD AR AS RANLIB STRIP OBJCOPY CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 	unset TERMUX_STANDALONE_TOOLCHAIN TERMUX_HOST_PLATFORM CGO_CFLAGS CGO_LDFLAGS
 
@@ -58,6 +65,13 @@ termux_step_pre_configure() {
 
 	cd "$TERMUX_PKG_SRCDIR"
 	bash "ci_build_arch_${_arch}.sh"
+
+	# Restore TUR toolchain variables for downstream steps (massage, strip, etc.)
+	export CC="$_saved_CC" CXX="$_saved_CXX" CPP="$_saved_CPP"
+	export LD="$_saved_LD" AR="$_saved_AR" AS="$_saved_AS"
+	export RANLIB="$_saved_RANLIB" STRIP="$_saved_STRIP" OBJCOPY="$_saved_OBJCOPY"
+	export TERMUX_STANDALONE_TOOLCHAIN="$_saved_TERMUX_STANDALONE_TOOLCHAIN"
+	export TERMUX_HOST_PLATFORM="$_saved_TERMUX_HOST_PLATFORM"
 }
 
 termux_step_configure() {
