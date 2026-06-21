@@ -27,6 +27,20 @@ termux_step_pre_configure() {
 	unset CC CXX CPP LD AR AS RANLIB STRIP OBJCOPY CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 	unset TERMUX_STANDALONE_TOOLCHAIN TERMUX_HOST_PLATFORM CGO_CFLAGS CGO_LDFLAGS
 
+	# Remove termux toolchain paths from PATH so host compiler detection
+	# finds the system's native gcc/g++, not the cross-compiler wrappers.
+	# ADLC (host tool) must be built for Linux x86_64, not Android.
+	local _newpath=""
+	local _p
+	IFS=: read -ra _p <<< "$PATH"
+	for _dir in "${_p[@]}"; do
+		case "$_dir" in
+			*termux-build*|*.termux*) ;;
+			*) _newpath="${_newpath:+$_newpath:}$_dir" ;;
+		esac
+	done
+	export PATH="$_newpath"
+
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 
 	local _arch
