@@ -51,7 +51,7 @@ termux_step_pre_configure() {
 	local _arch
 	case "$TERMUX_ARCH" in
 		aarch64) _arch="aarch64" ;;
-		arm)     _arch="arm" ;;
+		arm)     _arch="aarch32" ;;
 		x86_64)  _arch="x86_64" ;;
 		i686)    _arch="x86" ;;
 	esac
@@ -70,11 +70,17 @@ termux_step_make() {
 }
 
 termux_step_make_install() {
-	. "$TERMUX_PKG_SRCDIR/setdevkitpath.sh"
+	local _jdkout_dir
+	case "$TERMUX_ARCH" in
+		aarch64) _jdkout_dir="arm64" ;;
+		arm)     _jdkout_dir="arm" ;;
+		x86_64)  _jdkout_dir="x86_64" ;;
+		i686)    _jdkout_dir="x86" ;;
+	esac
 
 	rm -rf "$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
 	mkdir -p "$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
-	cp -r "$TERMUX_PKG_SRCDIR/jdkout/$TARGET_SHORT/"* \
+	cp -r "$TERMUX_PKG_SRCDIR/jdkout/$_jdkout_dir/"* \
 		"$TERMUX_PREFIX/lib/jvm/java-8-openjdk/"
 
 	local jdk_lib_arch
