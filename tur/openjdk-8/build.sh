@@ -69,28 +69,24 @@ termux_step_pre_configure() {
 }
 
 termux_step_configure() {
-	# massage.sh calls ${HOST}-clang for undefined-symbols QC only:
-	#   -print-libgcc-file-name  →  readelf -s <path>
-	#   -print-file-name=libomp.{so,a}  →  returned filename
-	# With TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is
-	# skipped, but the commands must still succeed.
-	#   -print-file-name=libomp.*:  return the arg itself → script
-	#       detects "not found" and skips readelf.
-	#   Everything else:  return a real .so from the JDK output so
-	#       readelf doesn't choke on /dev/null.
+	# The massage step calls ${HOST}-clang -print-libgcc-file-name and
+	# -print-file-name=libomp.{so,a} for undefined-symbols QC.  With
+	# TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is skipped,
+	# but the commands must still succeed and LIBOMP_SYMBOLS must be
+	# non-empty (otherwise create_grep_pattern_openmp crashes with
+	# "unbound variable").  Point to NDK r29's clang with the correct
+	# --target so it finds both libgcc and libomp in NDK 29's sysroot.
+	local ndk_bin="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
 	local wrapdir="$TERMUX_PKG_CACHEDIR/ndk-wrappers"
 	mkdir -p "$wrapdir"
-	cat > "$wrapdir/${TERMUX_HOST_PLATFORM}-clang" <<-'STUB'
+	local target="$TERMUX_HOST_PLATFORM"
+	if [ "$TERMUX_ARCH" = "arm" ]; then
+		target="armv7a-linux-androideabi"
+	fi
+	cat > "$wrapdir/${TERMUX_HOST_PLATFORM}-clang" <<-CLANG
 #!/bin/bash
-case "$1" in
-    -print-file-name=*)
-        echo "${1#*=}"
-        ;;
-    *)
-        ls "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/lib/"*.so 2>/dev/null | head -1
-        ;;
-esac
-STUB
+exec "$ndk_bin/clang" --target=${target}${TERMUX_PKG_API_LEVEL} "\$@"
+CLANG
 	chmod +x "$wrapdir/${TERMUX_HOST_PLATFORM}-clang"
 	export PATH="$wrapdir:$PATH"
 }
