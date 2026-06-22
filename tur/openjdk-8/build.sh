@@ -69,16 +69,27 @@ termux_step_pre_configure() {
 }
 
 termux_step_configure() {
-	# massage.sh calls ${HOST}-clang -print-libgcc-file-name and
-	# -print-file-name=libomp.{so,a} for undefined-symbols QC only.
-	# With TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is skipped,
-	# so a stub returning /dev/null for any flag is enough to avoid
-	# "command not found" crashes.
+	# massage.sh calls ${HOST}-clang for undefined-symbols QC only:
+	#   -print-libgcc-file-name  →  readelf -s <path>
+	#   -print-file-name=libomp.{so,a}  →  returned filename
+	# With TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is
+	# skipped, but the commands must still succeed.
+	#   -print-file-name=libomp.*:  return the arg itself → script
+	#       detects "not found" and skips readelf.
+	#   Everything else:  return a real .so from the JDK output so
+	#       readelf doesn't choke on /dev/null.
 	local wrapdir="$TERMUX_PKG_CACHEDIR/ndk-wrappers"
 	mkdir -p "$wrapdir"
 	cat > "$wrapdir/${TERMUX_HOST_PLATFORM}-clang" <<-'STUB'
 #!/bin/bash
-echo "/dev/null"
+case "$1" in
+    -print-file-name=*)
+        echo "${1#*=}"
+        ;;
+    *)
+        ls "$TERMUX_PREFIX/lib/jvm/java-8-openjdk/lib/"*.so 2>/dev/null | head -1
+        ;;
+esac
 STUB
 	chmod +x "$wrapdir/${TERMUX_HOST_PLATFORM}-clang"
 	export PATH="$wrapdir:$PATH"
