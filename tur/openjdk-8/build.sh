@@ -45,8 +45,7 @@ termux_step_setup_toolchain() {
 			libxv-dev libxxf86vm-dev libxtst-dev libxt-dev libice-dev libsm-dev
 		touch "$hostpkgs_marker"
 	fi
-	export NDK_TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-	export PATH="$NDK_TOOLCHAIN/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	export STRIP=llvm-strip
 	export READELF=llvm-readelf
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
@@ -69,7 +68,9 @@ termux_step_pre_configure() {
 	bash "ci_build_arch_${_arch}.sh"
 }
 
-termux_step_configure() { :; }
+termux_step_configure() {
+	export PATH="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+}
 termux_step_make() { :; }
 
 termux_step_make_install() {
