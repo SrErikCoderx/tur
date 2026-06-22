@@ -71,8 +71,8 @@ termux_step_pre_configure() {
 termux_step_configure() {
 	# massage.sh calls ${HOST}-clang -print-libgcc-file-name and
 	# -print-file-name=libomp.{so,a} for undefined-symbols QC only.
-	# With TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is
-	# skipped, so a stub returning /dev/null is enough to avoid
+	# With TERMUX_PKG_UNDEF_SYMBOLS_FILES=all the actual check is skipped,
+	# so a stub returning /dev/null for any flag is enough to avoid
 	# "command not found" crashes.
 	local wrapdir="$TERMUX_PKG_CACHEDIR/ndk-wrappers"
 	mkdir -p "$wrapdir"
