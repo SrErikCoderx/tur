@@ -38,7 +38,7 @@ termux_step_setup_toolchain() {
 	if [ ! -f "$hostpkgs_marker" ]; then
 		env -i PATH="$PATH" sudo apt update
 		env -i PATH="$PATH" sudo apt -y install autoconf python3 python-is-python3 unzip zip \
-			systemtap-sdt-dev gcc-multilib g++-multilib cmake patchelf \
+			systemtap-sdt-dev gcc-multilib g++-multilib cmake patchelf llvm \
 			libasound2-dev libelf-dev libfontconfig1-dev \
 			libx11-dev libxext-dev libxrender-dev libxrandr-dev libxinerama-dev \
 			libxi-dev libxft-dev libxcursor-dev libxfixes-dev libxss-dev \
@@ -46,6 +46,7 @@ termux_step_setup_toolchain() {
 		touch "$hostpkgs_marker"
 	fi
 	export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	export STRIP=llvm-strip
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
 	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
 	cp "$TERMUX_ELF_CLEANER" "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build/termux-elf-cleaner"
