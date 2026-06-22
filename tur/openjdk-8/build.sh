@@ -17,12 +17,12 @@ TERMUX_PKG_HOSTBUILD=true
 TERMUX_PKG_UNDEF_SYMBOLS_FILES="all"
 
 _ensure_patchelf() {
-	[ -x "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin/patchelf" ] && return 0
-	local _patchelf_url="https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
-	local _patchelf_arc="$TERMUX_PKG_CACHEDIR/patchelf.tar.gz"
-	curl -fsSL "$_patchelf_url" -o "$_patchelf_arc"
+	[ -x "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin/patchelf" ] && return
+	local url="https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz"
+	local arc="$TERMUX_PKG_CACHEDIR/patchelf.tar.gz"
+	curl -fsSL "$url" -o "$arc"
 	mkdir -p "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin"
-	tar -xzf "$_patchelf_arc" -C "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0"
+	tar -xzf "$arc" -C "$TERMUX_PKG_CACHEDIR/patchelf-0.18.0"
 }
 
 termux_step_host_build() {
@@ -33,34 +33,16 @@ termux_step_host_build() {
 	tar -xf "$arc" --strip-components=1 -C "$TERMUX_PKG_HOSTBUILD_DIR"
 }
 
-termux_step_pre_configure() {
-	local _saved_PATH="$PATH"
-	local _saved_STRIP="${STRIP:-}"
-	local _saved_TERMUX_HOST_PLATFORM="${TERMUX_HOST_PLATFORM:-}"
-
-	unset CC CXX CPP LD AR AS RANLIB STRIP OBJCOPY CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-	unset TERMUX_STANDALONE_TOOLCHAIN TERMUX_HOST_PLATFORM CGO_CFLAGS CGO_LDFLAGS
-
-	local _newpath=""
-	local _p
-	IFS=: read -ra _p <<< "$PATH"
-	for _dir in "${_p[@]}"; do
-		case "$_dir" in
-			*termux-build*|*.termux*) ;;
-			*) _newpath="${_newpath:+$_newpath:}$_dir" ;;
-		esac
-	done
-	export PATH="$_newpath"
-
+termux_step_setup_toolchain() {
+	export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	export JAVA_HOME="$TERMUX_PKG_HOSTBUILD_DIR"
-
 	mkdir -p "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build"
 	cp "$TERMUX_ELF_CLEANER" "$TERMUX_PKG_SRCDIR/termux-elf-cleaner/build/termux-elf-cleaner"
-
-	# patchelf is needed by debpack.sh to set RUNPATH on JDK shared libs
 	_ensure_patchelf
 	export PATH="$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin:$PATH"
+}
 
+termux_step_pre_configure() {
 	local _arch
 	case "$TERMUX_ARCH" in
 		aarch64) _arch="aarch64" ;;
@@ -69,22 +51,12 @@ termux_step_pre_configure() {
 		i686)    _arch="x86" ;;
 	esac
 	export TARGET_JDK="$_arch"
-
 	cd "$TERMUX_PKG_SRCDIR"
 	bash "ci_build_arch_${_arch}.sh"
-
-	export PATH="$_saved_PATH"
-	export STRIP="$_saved_STRIP"
-	export TERMUX_HOST_PLATFORM="$_saved_TERMUX_HOST_PLATFORM"
 }
 
-termux_step_configure() {
-	true
-}
-
-termux_step_make() {
-	true
-}
+termux_step_configure() { :; }
+termux_step_make() { :; }
 
 termux_step_make_install() {
 	local _jdkout_dir
@@ -95,15 +67,10 @@ termux_step_make_install() {
 		i686)    _jdkout_dir="x86" ;;
 	esac
 
-	rm -rf "$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
-	mkdir -p "$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
-	cp -r "$TERMUX_PKG_SRCDIR/jdkout/$_jdkout_dir/"* \
-		"$TERMUX_PREFIX/lib/jvm/java-8-openjdk/"
-
 	local jdk_home="$TERMUX_PREFIX/lib/jvm/java-8-openjdk"
-
-	_ensure_patchelf
-	export PATH="$TERMUX_PKG_CACHEDIR/patchelf-0.18.0/bin:$PATH"
+	rm -rf "$jdk_home"
+	mkdir -p "$jdk_home"
+	cp -r "$TERMUX_PKG_SRCDIR/jdkout/$_jdkout_dir/"* "$jdk_home/"
 
 	local jdk_lib_arch
 	jdk_lib_arch=$(basename "$(find "$jdk_home/lib" -maxdepth 1 -type d ! -name lib | head -1)")
@@ -114,9 +81,6 @@ termux_step_make_install() {
 	rpath+=":${jdk_home}/lib:${jdk_home}/jre/lib"
 	rpath+=":${TERMUX_PREFIX}/lib"
 
-# Procesar cada binario individualmente: "bin/*" expandido en una sola
-	# invocación de patchelf falla silenciosamente en binarios sin RPATH
-	# previo (jjs, rmic, orbd, etc), y el "|| true" lo ocultaba.
 	find "$jdk_home/bin" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' bin; do
 		patchelf --set-rpath "$rpath" "$bin" || echo "WARN: patchelf failed on $bin" >&2
 	done
